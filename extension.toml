@@ -1,6 +1,6 @@
 id = "jj-lsp"
-name = "JJ Conflicts"
-version = "0.0.1"
+name = "JJ Conflict Resolver"
+version = "0.1.0"
 schema_version = 1
 authors = ["Nils Koch<mail@nilskch.dev>"]
 description = "LSP to resolve conflicts in the jj-vcs"
@@ -8,7 +8,7 @@ repository = "https://github.com/nilskch/zed-jj-lsp"
 
 
 [language_servers.jj_lsp]
-name = "JJ LSP"
+name = "jj-lsp"
 languages = [
     "ActionScript",
     "Ada",
