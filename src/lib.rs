@@ -29,13 +29,23 @@ impl zed::Extension for JJ {
 }
 
 fn get_cached_or_download(language_server_id: &zed::LanguageServerId) -> zed::Result<String> {
-    let release = zed::latest_github_release(
+    let release = match zed::latest_github_release(
         JJ_LSP_REPO,
         zed::GithubReleaseOptions {
             require_assets: true,
             pre_release: false,
         },
-    )?;
+    ) {
+        Ok(release) => release,
+        Err(err) => {
+            // Network failed, try to find a cached binary
+            if let Ok(cached_binary) = find_cached_binary() {
+                eprintln!("Failed to fetch latest release: {err}. Using cached binary instead.");
+                return Ok(cached_binary);
+            }
+            return Err(err);
+        }
+    };
 
     let (os, arch) = zed::current_platform();
 
@@ -67,6 +77,36 @@ fn get_cached_or_download(language_server_id: &zed::LanguageServerId) -> zed::Re
     )?;
 
     Ok(cached_binary_name)
+}
+
+fn find_cached_binary() -> zed::Result<String> {
+    let current_directory =
+        std::env::current_dir().map_err(|err| format!("Failed to get current directory: {err}"))?;
+
+    let entries = current_directory
+        .read_dir()
+        .map_err(|err| format!("Failed to read directory: {err}"))?;
+
+    for entry in entries {
+        let path = entry
+            .map_err(|err| format!("Failed to get entry of current directory: {err}"))?
+            .path();
+
+        if path.is_file() {
+            if let Some(filename) = path.file_name() {
+                let filename_str = filename.to_string_lossy();
+                // Look for files matching pattern like "v0.1.0-jj-lsp" or "v0.1.0-jj-lsp.exe"
+                if filename_str.contains("jj-lsp")
+                    && !filename_str.contains(".tar")
+                    && !filename_str.contains(".zip")
+                {
+                    return Ok(filename_str.to_string());
+                }
+            }
+        }
+    }
+
+    Err("No cached jj-lsp binary found".to_string())
 }
 
 fn delete_all_current_dir() -> zed::Result<()> {
